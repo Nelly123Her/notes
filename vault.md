@@ -9,9 +9,9 @@
  vault server –config <location>
 ```
 ```sh
-$ vault server –config /etc/vault.d/vault.hcl
+vault server –config /etc/vault.d/vault.hcl
 ```
-
+---
 ### Create a server on linux
 ```sh
 ui = true
@@ -40,8 +40,9 @@ listener "tcp" {
   tls_disable = true
 }
 ```
-
-### Auto Unseal AWS
+---
+# Auto Unseal
+### 1. Auto Unseal AWS
 
 ```sh
 seal "awskms" {
@@ -53,7 +54,7 @@ seal "awskms" {
 }
 ```
 
-### Auto Unseal Azure
+### 2. Auto Unseal Azure
 
 ```sh
 seal "azurekeyvault" {
@@ -65,7 +66,7 @@ seal "azurekeyvault" {
 }
 ```
 
-### Auto Unseal Google
+### 3. Auto Unseal Google
 
 ```sh
 seal "gcpckms" {
@@ -243,11 +244,11 @@ $ vault policy write my-policy ./my-policy.hcl
 ```sh
 $ vault policy delete my-policy
 ```
-vault list auth/userpass/users/                                                                                                              2 ✘ 
+```sh
+vault list auth/userpass/users/                                                                                       
 Keys
 ----
-nelly
-    ~  vault read auth/userpass/users/nelly                                                                                                           ✔ 
+vault read auth/userpass/users/
 Key                        Value
 ---                        -----
 policies                   [polisy.hcl]
@@ -262,8 +263,7 @@ token_ttl                  0s
 token_type                 default
 
 
- vault login -method=userpass username=nelly                                                                                                    ✔ 
-Password (will be hidden): 
+vault login -method=userpass username=nelly                                                                                Password (will be hidden): 
 Success! You are now authenticated. The token information displayed below
 is already stored in the token helper. You do NOT need to run "vault login"
 again. Future Vault requests will automatically use this token.
@@ -278,12 +278,39 @@ token_policies         ["default" "polisy.hcl"]
 identity_policies      []
 policies               ["default" "polisy.hcl"]
 token_meta_username    nelly
+```
+### Enable Approle
+```sh
+vault auth list
+```
+```sh
+vault auth enable approle
+```
+#### Create a role
+```sh
+vault write auth/approle/role/my-role \
+    secret_id_ttl=10m \
+    token_num_uses=10 \
+    token_ttl=20m \
+    token_max_ttl=30m \
+    secret_id_num_uses=40
+```
+#### Another way to write a role
+```sh
+vault write auth/approle/role/my-role \
+    token_ttl=20m \
+    policies=mypolicy \
+```
 
+#### Generate a secret id
+```sh
+vault write -f auth/approle/role/my-role/secret-id
+```
 
 
 
 ### Install Premium Version on RedHat distros
-
+```sh
 sudo yum install -y yum-utils
 sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
 yum --showduplicates list vault-enterprise-hsm
@@ -302,3 +329,4 @@ export VAULT_ADDR="http://0.0.0.0:8200"
 
 firewall-cmd --zone=public --add-port=8200/tcp --permanent
   573  firewall-cmd --reload
+```
