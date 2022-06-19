@@ -389,3 +389,98 @@ path
 • kv/data/apps/dev/webapp
 • kv/data/apps/qa/webapp
 • kv/data/apps/prod/webapp
+
+
+### Tokens vault
+
+#### hvs. Service token
+#### hvr. Recovery token
+#### hvb. Batch token
+
+```sh
+vault token  lookup hvs.dV9U4rUcW3U4S24hm3kzpmXm
+Key                 Value
+---                 -----
+accessor            cSDqyjD2I73mp1d1uq0OP9Ha
+creation_time       1655243739
+creation_ttl        0s
+display_name        root
+entity_id           n/a
+expire_time         <nil>
+explicit_max_ttl    0s
+id                  hvs.dV9U4rUcW3U4S24hm3kzpmXm
+meta                <nil>
+num_uses            0
+orphan              true
+path                auth/token/root
+policies            [root]
+ttl                 0s
+type                service
+```
+
+
+
+
+
+
+
+**A periodic token have TTL but does not have MAX_TTL**
+Periodic tokens have a TTL, but no max TTL
+• Periodic tokens may live for an infinite amount of time, so long as
+they are renewed within their TTL
+
+**This is useful for long-running services/applications that cannot handle regenerating a token**
+
+Use case: I have a long-running app which cannot handle the
+regeneration of a token or secret Periodic Service Token
+**Create a periodic token:**
+ ```sh
+ vault token create -policy=training -period=24h
+ ```
+**Service token with use limits** 
+When you want to limit the number of requests coming to Vault from a
+particular token:
+• Limit the token's number of uses in addition to TTL and Max TTL
+• Use limit tokens expire at the end of their last use, regardless of their remaining
+TTLs
+• Use limit tokens expire at the end of their TTLs, regardless of remaining uses
+
+Use case: I need a token that gets revoked automatically after
+one use
+```sh
+vault token create -policy="training" -use-limit=2
+````
+**Orphan token**
+• Orphan tokens are not children of their parent; therefore, do not expire when their parent does
+• Orphan tokens still expire when their own Max TTL is reached
+
+Service Token with Use Limit
+Use cae: My app can't use a token where its expiration is
+influenced by its parent Orphan Service Token
+
+**Create an orphan token**
+```sh
+$ vault token create -policy="training" -orphan
+```
+---
+### Managing tokens in vault 
+![alt text](./vault/Screen%20Shot%202022-06-19%20at%2017.58.33.png)
+![alt text](./vault/Screen%20Shot%202022-06-19%20at%2017.58.48.png)
+---
+### Root tokens
+
+Initial root token comes from Vault initialization
+• Only method of authentication when first deploying Vault
+• Used for initial configuration – such as auth methods or audit devices
+• Once your new auth method is configured and tested, the root token
+should be revoked
+
+#### Revoke root token
+
+```sh
+vault token revoke s.dhtIk8VsE3Mj61PuGP3ZfFrg
+```
+we can create a root token 
+
+---
+### Token Accessors
