@@ -156,7 +156,7 @@ vault operator raft join https://active_node.example.com:8200
 
 vault operator raft list-peers
 
-
+---
 
 ###  Auth Methods
 The approle auth method allows machines or apps to authenticate with Vault-defined roles.  
@@ -202,7 +202,62 @@ token_ttl=20m \
 token_max_ttl=30m \
 secret_id_num_uses=40
 ```
+
+### 1. Enable Approle
+```sh
+vault auth list
+```
+```sh
+vault auth enable approle
+```
+#### Create a role
+```sh
+vault write auth/approle/role/my-role \
+    secret_id_ttl=10m \
+    token_num_uses=10 \
+    token_ttl=20m \
+    token_max_ttl=30m \
+    secret_id_num_uses=40
+```
+#### Another way to write a role
+```sh
+vault write auth/approle/role/my-role \
+    token_ttl=20m \
+    policies=mypolicy \
+```
+#### Generate a secret id
+```sh
+vault write -f auth/approle/role/my-role/secret-id
+```
+#### Get login with role-id and secret-id
+
+```sh
+vault write auth/approle/login role_id=""
+secret-id=""
+```
+
+### 2. Enable Okta authentication
+
+```sh
+vault auth enable okta
+```
+#### 
+```sh
+vault write auth/okta/config \
+   base_url="okta.com" \
+   org_name="dev-123456" \
+   api_token="00abcxyz..."
+```
+####  Login with okta
+```sh
+vault login -method=okta username=my-username
+```
+---
+
+
+
 ### Configuring Auth methods using cli
+#### Enable userpass
 ```sh
 vault auth enable userpass 
 Success! Enabled userpass auth method at: userpass/
@@ -221,16 +276,42 @@ userpass/    userpass    auth_userpass_c0227363    n/a
 Success! Tuned the auth method at: userpass/
 ```
 ```sh
-vault  write auth/userpass/users/nelly password=vault policies=polisy.hcl                                                                    
+vault  write auth/userpass/users/nelly password=vault policies=polisy.hcl   
 Success! Data written to: auth/userpass/users/nelly
+```
+### Login with userpass method 
+
+```sh
+$ vault login -method=userpass username=nelly 
+Password (will be hidden): 
+Success! You are now authenticated. The token information displayed below
+is already stored in the token helper. You do NOT need to run "vault login"
+again. Future Vault requests will automatically use this token.
+
+Key                    Value
+---                    -----
+token                  hvs.CAESIBTRok6mOIepSvw8YIYN_QE9JgiZptwLgHjdgQkmivSeGh4KHGh2cy5MNVFtbTV1ejZPUzQxWDQyMnR1cXAzbGU
+token_accessor         ymmnrVi9DmZ8m6C3lugcRmm6
+token_duration         768h
+token_renewable        true
+token_policies         ["admins" "default"]
+identity_policies      []
+policies               ["admins" "default"]
+token_meta_username    nelly
 ```
 
 
-vualt list auth/userpas/users/nelly
-
-
+---
 ### Policies
 
+#### Vault Policies - Capabilities
+• Create – create a new entry
+• Read – read credentials, configurations, etc
+• Update – overwrite the existing value of a secret or configuration
+• Delete – delete something
+• List – view what's there (doesn't allow you to read)
+• Sudo – used for root-protected paths
+• Deny – deny access – always takes presedence over any other capability
 
 List all enabled policies:
 ```sh
@@ -261,51 +342,9 @@ token_period               0s
 token_policies             [polisy.hcl]
 token_ttl                  0s
 token_type                 default
-
-
-vault login -method=userpass username=nelly                                                                                Password (will be hidden): 
-Success! You are now authenticated. The token information displayed below
-is already stored in the token helper. You do NOT need to run "vault login"
-again. Future Vault requests will automatically use this token.
-
-Key                    Value
----                    -----
-token                  hvs.CAESIGZ4bxcFMMYcUFymGG5BwictmyFwlIXUF1MS4CDE4dpaGh4KHGh2cy5oeEdIZFo1dXBHamo1VnpyM0hiMHJVWEQ
-token_accessor         8mD0wM4nL83wOeR28jk1JPi7
-token_duration         24h
-token_renewable        true
-token_policies         ["default" "polisy.hcl"]
-identity_policies      []
-policies               ["default" "polisy.hcl"]
-token_meta_username    nelly
-```
-### Enable Approle
-```sh
-vault auth list
-```
-```sh
-vault auth enable approle
-```
-#### Create a role
-```sh
-vault write auth/approle/role/my-role \
-    secret_id_ttl=10m \
-    token_num_uses=10 \
-    token_ttl=20m \
-    token_max_ttl=30m \
-    secret_id_num_uses=40
-```
-#### Another way to write a role
-```sh
-vault write auth/approle/role/my-role \
-    token_ttl=20m \
-    policies=mypolicy \
 ```
 
-#### Generate a secret id
-```sh
-vault write -f auth/approle/role/my-role/secret-id
-```
+
 
 
 
@@ -330,3 +369,23 @@ export VAULT_ADDR="http://0.0.0.0:8200"
 firewall-cmd --zone=public --add-port=8200/tcp --permanent
   573  firewall-cmd --reload
 ```
+
+### Wildcards on vault
+
+### *
+
+Can be used to signify anything "after" a path or as part of a pattern
+
+1. secret/apps/application1/* - allows any path after application1
+1. kv/platform/db-* - would match kv/platform/db-2 but not kv/platform/db2
+
+### +
+The plus (+) supports wildcard matching for a single directory in the
+path 
+• Can be used in multiple path segments (i.e., secret/+/+/db)
+• Examples:
+• secret/+/db - matches secret/db2/db or secret/app/db
+• kv/data/apps/+/webapp – matches the following:
+• kv/data/apps/dev/webapp
+• kv/data/apps/qa/webapp
+• kv/data/apps/prod/webapp
