@@ -18,3 +18,60 @@ Once the public key has been configured on the server, the server will allow any
 ```sh
 scp  project.zip root@192.168.0.15:/home/
 ```
+
+
+### Creating TLS certificates with OPENSSL
+
+#### Generating Keys
+```sh
+openssl genrsa -out ca.key 2048
+
+openssl req -x509 -new -nodes -key ca.key -sha256 -days 1825 -out ca_cert.pem
+
+openssl genrsa -out tls.key 2048
+
+openssl req -new -key tls.key -out tls.csr
+```
+
+#### Creating Extensions file for certificates
+```sh
+touch /opt/vault/certs/client_cert_ext.cnf
+echo "Editing the Extensions file for certificates"
+
+tee /opt/vault/certs/client_cert_ext.cnf <<EOF
+
+authorityKeyIdentifier=keyid,issuer
+basicConstraints=CA:FALSE
+keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = $standalone
+DNS.2 = $node1
+DNS.3 = $node2
+DNS.4 = $node3
+DNS.5 = $replication
+DNS.6 = $recovery
+
+EOF
+```
+#### Signing the certificates
+```sh
+openssl x509 -req -in tls.csr -CA ca_cert.pem -CAkey ca.key -CAcreateserial -out tls.crt -days 825 -sha256 -extfile client_cert_ext.cnf
+```
+
+
+### Change hosts
+We use this feature when we need to stablish a communication between machines using a name instead of ip address. 
+```sh
+sudo nano  /etc/hosts
+```
+
+Example
+```sh
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+localhost vaultserver
+192.168.0.8 vault-node1
+192.168.0.11 vault-node2
+```
