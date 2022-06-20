@@ -464,8 +464,8 @@ $ vault token create -policy="training" -orphan
 ```
 ---
 ### Managing tokens in vault 
-![alt text](./vault/Screen%20Shot%202022-06-19%20at%2017.58.33.png)
-![alt text](./vault/Screen%20Shot%202022-06-19%20at%2017.58.48.png)
+![alt text](./vault/1.png)
+![alt text](./vault/2.png)
 ---
 ### Root tokens
 
@@ -480,7 +480,60 @@ should be revoked
 ```sh
 vault token revoke s.dhtIk8VsE3Mj61PuGP3ZfFrg
 ```
-we can create a root token 
+#### Create a root token from an existing root token
+![root token](./vault/3.png)
+So we login into vault with a root token and we create a new root token.
 
+
+#### Create a root token using unseal/recovery keys
+![root token](./vault/4.png)
+
+![root token](./vault/5.png)
+![root token](./vault/6.png)
+![root token](./vault/7.png)
+```sh
+vault operator generate-root -init
+A One-Time-Password has been generated for you and is shown in the OTP field.
+You will need this value to decode the resulting root token, so keep it safe.
+Nonce         9c3ae56a-5387-0b9e-a3c6-fbe212357034
+Started       true
+Progress      0/3
+Complete      false
+OTP           8vX64UVnVzMo0qspyUuUtvrQ2Uw5
+OTP Length    28
+```
+```sh
+vault operator generate-root
+Operation nonce: 9c3ae56a-5387-0b9e-a3c6-fbe212357034
+Unseal Key (will be hidden): 
+Nonce       9c3ae56a-5387-0b9e-a3c6-fbe212357034
+Started     true
+Progress    1/3
+Complete    false
+```
+```sh
+vault operator generate-root
+Operation nonce: 9c3ae56a-5387-0b9e-a3c6-fbe212357034
+Unseal Key (will be hidden): 
+Nonce       9c3ae56a-5387-0b9e-a3c6-fbe212357034
+Started     true
+Progress    2/3
+Complete    false
+```
+```sh
+vault operator generate-root
+Operation nonce: 9c3ae56a-5387-0b9e-a3c6-fbe212357034
+Unseal Key (will be hidden): 
+Nonce            9c3ae56a-5387-0b9e-a3c6-fbe212357034
+Started          true
+Progress         3/3
+Complete         true
+Encoded Token    UAArGAI6ZyAjTAE6XURBHh4jQAQiPTobQAYhXw
+```
 ---
 ### Token Accessors
+Token accessors can be used to perform limited actions
+• Look up token properties
+• Look up the capabilities of a token
+• Renew the token
+• Revoke the token
