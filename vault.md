@@ -537,3 +537,79 @@ Token accessors can be used to perform limited actions
 • Look up the capabilities of a token
 • Renew the token
 • Revoke the token
+
+### KV and KV2
+The difference between them is 2 is version key value store, where version 1 is not.
+
+So if you're using version two and you write a secret to version two, not only do you get data
+we also store such a metadata associated with that secret.
+
+Now, if you overwrite that secret again, what can do is just create version two and that version three and so on. 
+
+And if you're not deleting old versions, you can actually refer to previous versions of that secret.
+
+So KV2 gives us that functionality.
+
+If you overwrite a secret and version one, it just gets overwritten.
+
+
+
+### Secrets Engines
+
+**Database**
+
+```sh
+vault enable secrets database
+```
+
+```sh
+vault secrets list
+```
+
+```sh
+vault write database/config/my-mysql-database \
+    plugin_name=mysql-database-plugin \
+    connection_url="{{username}}:{{password}}@tcp(127.0.0.1:3306)/" \
+    allowed_roles="my-role" \
+    username="root" \
+    password="Mozart123%%%%"
+```
+
+```sh
+vault write database/roles/my-role \
+    db_name=my-mysql-database \
+    creation_statements="CREATE USER '{{name}}'@'%' IDENTIFIED BY '{{password}}';GRANT SELECT ON *.* TO '{{name}}'@'%';" \
+    default_ttl="1h" \
+    max_ttl="24h"
+Success! Data written to: database/roles/my-role
+```
+```sh
+vault read database/creds/my-role
+Key                Value
+---                -----
+lease_id           database/creds/my-role/RtRIbPsoQ5rkKA2rxz78nsJb
+lease_duration     1h
+lease_renewable    true
+password           5FeDLJH-AnAl7HRsa6ai
+username           v-root-my-role-YLEtMiV0MKn4VlBED
+```
+
+**We log in**
+
+```sh
+ sudo mysql -u v-root-my-role-YLEtMiV0MKn4VlBED -p
+Enter password: 
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 8
+Server version: 5.7.38-0ubuntu0.18.04.1 (Ubuntu)
+
+Copyright (c) 2000, 2022, Oracle and/or its affiliates.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> 
+```
