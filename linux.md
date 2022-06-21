@@ -75,3 +75,12 @@ localhost vaultserver
 192.168.0.8 vault-node1
 192.168.0.11 vault-node2
 ```
+
+Change /etc/hosts and /etc/hostname
+```sh
+echo "vault-node5" > /etc/hostname
+echo " 192.168.0.15        vault-node5" >> /etc/hosts
+shutdown -r now
+```
+
+ echo -e "192.168.0.4   vault-transit\n192.168.0.9    vault-node1\n192.168.0.10   vault-node2\n192.168.0.12   vault-node3\n192.168.0.13   vault-node4\n192.168.0.15   vault-node5" >> /etc/hosts

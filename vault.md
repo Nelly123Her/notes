@@ -364,10 +364,12 @@ systemctl enable vault
 systemctl start vault
 systemctl status vault.service
 
-export VAULT_ADDR="http://0.0.0.0:8200"
-
+ 
 firewall-cmd --zone=public --add-port=8200/tcp --permanent
   573  firewall-cmd --reload
+export VAULT_LICENSE=HDDZLUpG7jP$)fA*)f<5_nYq#rgGkCL5qMT\~NRX;{;M.q~Y_heF+sP~$;#H?RVGrj+qt)mw"\Y[?h*$)
+
+  
 ```
 
 ### Wildcards on vault
