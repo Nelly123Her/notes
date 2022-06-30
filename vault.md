@@ -40,6 +40,11 @@ listener "tcp" {
   tls_disable = true
 }
 ```
+#### Deploy a vault dev server
+
+```sh
+vault server -dev
+```
 ---
 # Auto Unseal
 ### 1. Auto Unseal AWS
@@ -557,7 +562,71 @@ If you overwrite a secret and version one, it just gets overwritten.
 
 
 ### Secrets Engines
+---
+**KV** 
+stores static secrets
+#### Enabling kv version 1
+```sh
+vault enable secrets kv
+```
+![root token](./vault/8.png)
 
+#### Enabling kv version 2
+```sh
+vault secrets enable -version=2 kv
+```
+![root token](./vault/9.png)
+#### Putting information on kv version 2
+```sh
+vault kv put kv/data/efe nelly=123
+== Secret Path ==
+kv/data/data/efe
+
+======= Metadata =======
+Key                Value
+---                -----
+created_time       2022-06-25T02:07:05.567346645Z
+custom_metadata    <nil>
+deletion_time      n/a
+destroyed          false
+version            1
+```
+#### Getting information about a path
+```sh
+vault kv get kv/data/efe
+== Secret Path ==
+kv/data/data/efe
+
+======= Metadata =======
+Key                Value
+---                -----
+created_time       2022-06-25T02:07:05.567346645Z
+custom_metadata    <nil>
+deletion_time      n/a
+destroyed          false
+version            1
+```
+#### Rolling back a version
+```sh
+ vault kv rollback -version=1 kv/data/efe
+Key                Value
+---                -----
+created_time       2022-06-25T02:12:12.438209296Z
+custom_metadata    <nil>
+deletion_time      n/a
+destroyed          false
+version            3
+```
+
+---
+**AWS**
+```sh
+vault enable secrets aws
+```
+
+
+
+---
 **Database**
 
 ```sh
@@ -614,4 +683,39 @@ owners.
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
 mysql> 
+```
+
+
+```sh
+vault kv  get kv/data 
+== Secret Path ==
+kv/data/data
+
+======= Metadata =======
+Key                Value
+---                -----
+created_time       2022-06-25T02:47:55.3375445Z
+custom_metadata    <nil>
+deletion_time      n/a
+destroyed          false
+version            1
+
+====== Data ======
+Key         Value
+---         -----
+password    123
+[root@localhost sentinel_policies]# vault kv  delete kv/data 
+Success! Data deleted (if it existed) at: kv/data/data
+[root@localhost sentinel_policies]# vault kv  get kv/data 
+== Secret Path ==
+kv/data/data
+
+======= Metadata =======
+Key                Value
+---                -----
+created_time       2022-06-25T02:47:55.3375445Z
+custom_metadata    <nil>
+deletion_time      2022-06-25T02:48:13.553553002Z
+destroyed          false
+version            1
 ```
