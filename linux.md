@@ -83,4 +83,14 @@ echo " 192.168.0.15        vault-node5" >> /etc/hosts
 shutdown -r now
 ```
 
- echo -e "192.168.0.4   vault-transit\n192.168.0.9    vault-node1\n192.168.0.10   vault-node2\n192.168.0.12   vault-node3\n192.168.0.13   vault-node4\n192.168.0.15   vault-node5" >> /etc/hosts
+### Solving a port is being used
+```sh
+netstat -nlp | grep 8200
+```
+
+
+It'll show processing running at this port, then kill that process using PID (look for a PID in row) of that process.
+```sh
+kill PID
+```
+**Example** :

@@ -617,6 +617,141 @@ deletion_time      n/a
 destroyed          false
 version            3
 ```
+### Kv version 2
+![root token](./vault/10.png)
+
+```sh
+$ vault secrets enable -version=2 kv
+Success! Enabled the kv secrets engine at: kv/
+``` 
+```sh
+vault token lookup
+Key                 Value
+---                 -----
+accessor            RX2zPaTGpNpZrBKI0AShVLcx
+creation_time       1656614883
+creation_ttl        0s
+display_name        root
+entity_id           n/a
+expire_time         <nil>
+explicit_max_ttl    0s
+id                  hvs.BmI578JCJgzsJPBT4bIC3oAt
+meta                <nil>
+num_uses            0
+orphan              true
+path                auth/token/root
+policies            [root]
+ttl                 0s
+type                service
+```
+
+```sh
+vault secrets enable kv  
+Success! Enabled the kv secrets engine at: kv/
+```
+
+```sh
+vault kv put kv/app/db pass=123 user=admin api=a8ee4b50cce124
+Success! Data written to: kv/app/db
+```
+```sh
+vault kv put kv/app/db api=39cms1204mfi2m 
+= Secret Path =
+kv/data/app/db
+
+======= Metadata =======
+Key                Value
+---                -----
+created_time       2022-06-30T19:09:30.433709Z
+custom_metadata    <nil>
+deletion_time      n/a
+destroyed          false
+version            2
+```
+```sh
+vault kv get kv/app/db 
+= Secret Path =
+kv/data/app/db
+
+======= Metadata =======
+Key                Value
+---                -----
+created_time       2022-06-30T19:12:33.421798Z
+custom_metadata    <nil>
+deletion_time      n/a
+destroyed          false
+version            3
+
+==== Data ====
+Key     Value
+---     -----
+api     a8ee4b50cce124
+pass    123
+user    admin
+```
+```sh
+vault kv rollback -version=1 kv/app/db 
+Key                Value
+---                -----
+created_time       2022-06-30T19:12:33.421798Z
+custom_metadata    <nil>
+deletion_time      n/a
+destroyed          false
+version            3
+```
+![root token](./vault/11.png)
+#### Getting data 2 different ways
+##### default (table)
+```sh
+vault kv get  kv/app/db
+= Secret Path =
+kv/data/app/db
+
+======= Metadata =======
+Key                Value
+---                -----
+created_time       2022-06-30T19:12:33.421798Z
+custom_metadata    <nil>
+deletion_time      n/a
+destroyed          false
+version            3
+
+==== Data ====
+Key     Value
+---     -----
+api     a8ee4b50cce124
+pass    123
+user    admin
+```
+
+
+##### Format json
+Useful for creating machine-readable outputs
+```sh
+vault kv get -format=json kv/app/db 
+{
+  "request_id": "4c96c352-a546-e879-f60b-0b570295b43a",
+  "lease_id": "",
+  "lease_duration": 0,
+  "renewable": false,
+  "data": {
+    "data": {
+      "api": "a8ee4b50cce124",
+      "pass": "123",
+      "user": "admin"
+    },
+    "metadata": {
+      "created_time": "2022-06-30T19:12:33.421798Z",
+      "custom_metadata": null,
+      "deletion_time": "",
+      "destroyed": false,
+      "version": 3
+    }
+  },
+  "warnings": null
+}
+```
+
 
 ---
 **AWS**
@@ -683,39 +818,4 @@ owners.
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
 mysql> 
-```
-
-
-```sh
-vault kv  get kv/data 
-== Secret Path ==
-kv/data/data
-
-======= Metadata =======
-Key                Value
----                -----
-created_time       2022-06-25T02:47:55.3375445Z
-custom_metadata    <nil>
-deletion_time      n/a
-destroyed          false
-version            1
-
-====== Data ======
-Key         Value
----         -----
-password    123
-[root@localhost sentinel_policies]# vault kv  delete kv/data 
-Success! Data deleted (if it existed) at: kv/data/data
-[root@localhost sentinel_policies]# vault kv  get kv/data 
-== Secret Path ==
-kv/data/data
-
-======= Metadata =======
-Key                Value
----                -----
-created_time       2022-06-25T02:47:55.3375445Z
-custom_metadata    <nil>
-deletion_time      2022-06-25T02:48:13.553553002Z
-destroyed          false
-version            1
 ```
