@@ -1,7 +1,72 @@
+
+### Create a namespace 
+```sh
+kubectl create ns (Name of namespace)
+```
+
+### Delete a namespace
+```sh
+kubectl delete ns develope
+```
+
+### Apply a file yaml -n tag is the namespace -f file tag
+```sh
+kubectl -n test apply -f 01-basic-pod.yaml
+```
+
+### 
+```sh
+kubectl -n test get all 
+```
+
+
+```sh
+kubectl -n test exec -it nginx -- sh
+```
+
+
+
+### Delete a pod with the file we created it
+```sh
+kubectl -n test delete -f 01-basic-pod.yaml 
+```
+
+
+```sh
+kubectl -n test get all 
+```
+
+```sh
+kubectl - test delete (name)
+```
+
+
+```sh
+kubectl -n test apply -f 03-deployment.yaml 
+```
+
+
+
+```sh
+kubectl -n test exec -it pod/nginx-deployment-764fb85c6f-27c6w -- sh 
+```
+
+
+```sh
+helm install bitnami/wordpress --generate-name --create-namespace --namespace wordpress
+```
+
+
+```sh
+ helm install stable/nginx-ingress --generate-name --create-namespace --namespace nginx-controller
+```
+
+
+
 ```sh
 kubectl delete daemonsets,replicasets,services,deployments,pods,rc,ingress --all --all-namespaces
 ```
-
+### https://www.hashicorp.com/products/vault/trial
 ### Installing Vault enterprise in Kubernetes
 ####  Creating a file called config.yaml
 ```yml
@@ -26,12 +91,21 @@ volumeClaimTemplates:
 ```
 ### Set our secret
 ```sh
+nano license.hclic
+```
+```sh
+secret=$(cat license.hclic)
+```
+```sh
 echo $secret                                                                                                                
 02MV4UU43BK5HGYYTOJZWFQMTMNNEWU33JJZDU2MCNNJMXQTSENN2E43KVGNNGSMD2J5LVU2CMKRATKWSUJV2E4RCBGNNG2SJRLJVE26KPKRVXUSLJO5UVSM2WPJSEOOLULJMEUZTBK5IWST3JJE2E2RCNO5NFOUTMJZJTANKONVNG2TCUIV4E42SBORHUOVTMJ5BTAMKPIRJGYWSUMM2E42TDGJHHUVLJJRBUU4DCNZHDAWKXPBZVSWCSOBRDENLGMFLVC2KPNFEXCSLJO5UWCWCOPJSFOVTGMRDWY5C2KNETMSLKJF3U22SJORGUIY3UJVCEUVKNKRRTMTSUIU3E2RDDOVHVIY3ZJZ5E2M2ONJKXUV3JJFZUS3SOGBMVQSRQLAZVE4DCK5KWST3JJF4U2RCJPFGFIQJTJRKEC6KWIRCTGT3KKV4E62SBGNLWSSLTJFWVMNDDI5WHSWKYKJYGEMRVMZSEO3DULJJUSNSJNJEXOTLKJF2E2RDHORGUIRSVJVKGGNSOKRCTMTKEMRQUS2LXNFSEOVTZMJLWY5KZLBJHAYRSGVTGIR3MORNFGSJWJFVES52NNJEXITKEM52E2RCKKVGVIYZWJZKEKNSNIRSGCSLJO5UWGSCKOZNEQVTKMRBUSNSJNZNGQZCXPAYES2LXNFNG26DILIZU22KPNZZWSYSXHFVWIV3YNRRXSSJWK54UU5DEK54DAYKTGFVVS6JRPJMTERTTLJJUS42JNVSHMZDNKZ4WE3KGOVMTEVLUMNDTS43BK5HDKSLJO5UVSV2SGJMVONLKLJLVC5C2I5DDAWKTGF3WG3JZGBNFOTRQMFLTS5KJNQYTSZSRHU6S4SSDNJXHQZJVGFGE23CKOFDTC32RIV2FAOKNGRZWET3YOFZWETCGNU4TET3VKJ4GUWCZIZVG6MCWK4VUENBTIZ4HAVBXNZJFUZCSJNBXGZ22OZATOQKJJJHW2TKZHBWXU5TFGBWUCNJRMRAWWY3BGRSFMMBTGM4FA53NKZWGC5SKKA2HASTYJFETSRBWKVDEYVLBKZIGU22XJJ2GGRBWOBQWYNTPJ5TEO3SLGJ5FAS2KKJWUOSCWGNSVU53RIZSSW3ZXNMXXGK2BKRHGQUC2M5JS6S2WLFTS6SZLNRDVA52MG5VEE6CJG5DU6YLLGZKWC2LBJBXWK2ZQKJKG6NZSIRIT2PI
 ```
 ```sh
 $kubectl create secret generic vault-ent-license --from-literal="license=${secret}"
 secret/vault-ent-license created
+```
+```sh
+helm repo add hashicorp https://helm.releases.hashicorp.com
 ```
 ### Installing vault
 ```sh
@@ -56,7 +130,7 @@ Your release is named vault. To learn more about the release, try:
   $ helm get manifest vault
 ```
 ```sh
-kubectl exec -ti vault-0 -- vault license get                                                                                                                               ──(Sat,Jul02)─┘
+kubectl exec -ti vault-0 -- vault license get                                                                                                                    
 
 Error retrieving license: Error making API request.
 
@@ -183,3 +257,16 @@ Success! Enabled the transform secrets engine at: transform/
 ```sh
 kubectl port-forward vault-0 8200:8200
 ```
+
+netstat -nlp | grep 8200                                            0|1 ✘ 
+(Not all processes could be identified, non-owned process info
+ will not be shown, you would have to be root to see it all.)
+tcp        0      0 0.0.0.0:8200            0.0.0.0:*               LISTEN      -                   
+    ~/learn-vault-agent/vault-agent-k8s-demo    main ?1  sudo netstat -nlp | grep 8200                                           ✔ 
+tcp        0      0 0.0.0.0:8200            0.0.0.0:*               LISTEN      9511/vault          
+    ~/learn-vault-agent/vault-agent-k8s-demo    main ?1  kill 8511                                                               ✔ 
+kill: kill 8511 failed: no such process
+    ~/learn-vault-agent/vault-agent-k8s-demo    main ?1  kill 9511                                                             1 ✘ 
+    ~/learn-vault-agent/vault-agent-k8s-demo    main ?1  kill 8511      
+
+ sudo pkill -u postgres 

@@ -16,7 +16,6 @@ Once the public key has been configured on the server, the server will allow any
 
 ### Sending files by SSH
 ```sh
-scp  project.zip root@192.168.0.15:/home/
 ```
 
 
@@ -94,3 +93,4 @@ It'll show processing running at this port, then kill that process using PID (lo
 kill PID
 ```
 **Example** :
+sudo find / -name "vault.hcl"

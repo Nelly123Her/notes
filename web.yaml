@@ -1,0 +1,67 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deployment
+  labels:
+    app: web
+spec:
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/agent-inject-secret-db-creds: "database/creds/db-app"
+        vault.hashicorp.com/agent-inject-template-db-creds: |
+          {
+          {{- with secret "database/creds/db-app" -}}
+          "db_connection": "postgresql://{{ .Data.username }}:{{ .Data.password }}@postgres:5432/wizard"
+          {{- end }}
+          }
+        vault.hashicorp.com/role: "web"
+    spec:
+    serviceAccountName: web
+  volumes:
+  - name: nginx-config
+    configMap:
+      name: nginx-config
+      defaultMode: 0777
+      items:
+        - key: index.html
+          path: index.html
+    containers:
+    - image: nginx
+      name: nginx-container
+      ports:
+        - containerPort: 80
+    volumeMounts:
+        - mountPath: /usr/share/nginx/html
+
+        ## for Maintaining nginx and vault configurations.
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: nginx-config
+data:
+  index.html: |
+    <html>
+    <body>
+    <p>Some secrets:</p>
+    <ul>
+    <li><pre>username: .Data.username </pre></li>
+    <li><pre>password: .Data.password </pre></li>
+    </ul>
+    </body>
+    </html>
+---
+## Nginx as a microservice deployment. It queries vault for retrieving secrets.
+
+
+
+kubectl exec -it $(kubectl get pods --selector "app=postgres" -o jsonpath="{.items[0].metadata.name}") -c postgres -- bash -c 'PGPASSWORD=5dsreu-5UIvtwFUOVYTA psql -U v-kubernet-db-app-MytjZcHX2820e0BPayqO-1657131100 -d wizard'
+kubectl port-forward web-deployment-77b9485857-7k2sm 8080:80

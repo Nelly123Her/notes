@@ -157,17 +157,19 @@ log_level = "INFO"
 ```
 
 
+### Raft Storage
 vault operator raft join https://active_node.example.com:8200
 
 vault operator raft list-peers
+#### HSM
+
 
 ---
 
 ###  Auth Methods
 The approle auth method allows machines or apps to authenticate with Vault-defined roles.  
 Each auth method is enabled at a path
-1. You can choose the path name when (and only when) you enable the 
-auth method
+1. You can choose the path name when (and only when) you enable the auth method
 1. If you do not provide a name, the auth method will be enabled at its 
 default path
 1. The default path name is equal to the type of auth method (i.e., aws is 
@@ -399,6 +401,7 @@ path
 
 
 ### Tokens vault
+There are two types of tokens: service tokens and batch tokens.
 
 #### hvs. Service token
 #### hvr. Recovery token
@@ -424,12 +427,64 @@ policies            [root]
 ttl                 0s
 type                service
 ```
+### Command options tokens
+
+  -no-default-policy
+      Detach the "default" policy from the policy set for this token. The
+      default is false.
+
+  -orphan
+      Create the token with no parent. This prevents the token from being
+      revoked when the token which created it expires. Setting this value
+      requires root or sudo permissions. The default is false.
+
+  -period=<duration>
+      If specified, every renewal will use the given period. Periodic tokens
+      do not expire (unless -explicit-max-ttl is also provided). Setting this
+      value requires sudo permissions. This is specified as a numeric string
+      with suffix like "30s" or "5m".
+
+  -policy=<string>
+      Name of a policy to associate with this token. This can be specified
+      multiple times to attach multiple policies.
+
+  -renewable
+      Allow the token to be renewed up to it's maximum TTL. The default is
+      true.
+
+  -role=<string>
+      Name of the role to create the token against. Specifying -role may
+      override other arguments. The locally authenticated Vault token must
+      have permission for "auth/token/create/<role>".
+
+  -ttl=<duration>
+      Initial TTL to associate with the token. Token renewals may be able to
+      extend beyond this value, depending on the configured maximum TTLs. This
+      is specified as a numeric string with suffix like "30s" or "5m".
+
+  -type=<string>
+      The type of token to create. Can be "service" or "batch". The default is
+      service.
+
+  -use-limit=<int>
+      Number of times this token can be used. After the last use, the token
+      is automatically revoked. By default, tokens can be used an unlimited
+      number of times until their expiration.
 
 
 
+### Token Time-To-Live, Periodic Tokens, and Explicit Max TTLs
 
+Every non-root token has a time-to-live (TTL) associated with it, which is a current period of validity since either the token's creation time or last renewal time, whichever is more recent. (Root tokens may have a TTL associated, but the TTL may also be 0, indicating a token that never expires).
 
+### Periodic Tokens
+In some cases, having a token be revoked would be problematic -- for instance, if a long-running service needs to maintain its SQL connection pool over a long period of time. In this scenario, a periodic token can be used.
 
+Ways to create periodic tokens
+
+1. By having sudo capability or a root token with the auth/token/create endpoint
+1. By using token store roles
+1. By using an auth method that supports issuing these, such as AppRole
 
 **A periodic token have TTL but does not have MAX_TTL**
 Periodic tokens have a TTL, but no max TTL
@@ -462,13 +517,27 @@ vault token create -policy="training" -use-limit=2
 • Orphan tokens still expire when their own Max TTL is reached
 
 Service Token with Use Limit
-Use cae: My app can't use a token where its expiration is
-influenced by its parent Orphan Service Token
+Use case: My app can't use a token where its expiration is influenced by its parent Orphan Service Token
 
 **Create an orphan token**
 ```sh
 $ vault token create -policy="training" -orphan
 ```
+#### Batch tokens vs Service tokens
+
+| Description                         | Services tokens      | Batch tokens                |
+| ----------------------------------- | -------------------- | ------------                |
+| Can Be Root Tokens                  | Yes                  | No                          |
+| Can Create Child Tokens	            | Yes                  | No                          |
+| Can be Renewable	                  | Yes                  | No                          |
+| Can be periodic 	                  | Yes                  | No                          |
+| Can have explicit MAX TTL	          | Yes                  | No(always uses a fixed TTL) |
+| Has Accessors		                    | Yes                  | No                          |
+| Has Cubbyhole	  	                  | Yes                  | No                          |
+| Revoked with Parent (if not orphan)	| Yes                  | Stops working               |
+| Dynamic Secrets Lease Assignment		| Yes                  | Parent if not orphan        |
+| Can be Used Across Performance Replication Clusters		                  | No                  | Yes(if orphan)                          |
+| Creation Scales with Performance Standby Node Count		                  | No                  | Yes                          |
 ---
 ### Managing tokens in vault 
 ![alt text](./vault/1.png)
@@ -544,6 +613,12 @@ Token accessors can be used to perform limited actions
 • Look up the capabilities of a token
 • Renew the token
 • Revoke the token
+ 
+---
+### Leases 
+With every dynamic secret and service type authentication token, Vault creates a lease: metadata containing information such as a time duration, renewability, and more. Vault promises that the data will be valid for the given duration, or Time To Live (TTL). Once the lease is expired, Vault can automatically revoke the data, and the consumer of the secret can no longer be certain that it is valid.
+
+---
 
 ### KV and KV2
 The difference between them is 2 is version key value store, where version 1 is not.
@@ -562,6 +637,7 @@ If you overwrite a secret and version one, it just gets overwritten.
 
 
 ### Secrets Engines
+
 ---
 **KV** 
 stores static secrets
@@ -818,4 +894,245 @@ owners.
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
 mysql> 
+```
+
+
+```sh
+vault secrets list --detailed
+```
+if map is empty means its kv version 1
+
+### Transit secrets engine
+The primary function of the transit secrets engine is decrypt/encrypt data.
+Vault's transit secrets engine handles cryptographic functions on data-in-transit. Vault doesn't store the data sent to the secrets engine, so it can also be viewed as encryption as a service.
+```sh
+vault secrets enable transit
+```
+Create a named encryption key
+```sh
+vault write -f transit/keys/orders
+```
+Encrypt plaintext
+```sh
+vault write transit/encrypt/orders \
+    plaintext=$(base64 <<< "4111 1111 1111 1111")
+```
+The returned ciphertext starts with vault:v1:. The first prefix (vault) identifies that it has been wrapped by Vault. The v1 indicates the key version 1 was used to encrypt the plaintext; therefore, when you rotate keys, Vault knows which version to use for decryption. The rest is a base64 concatenation of the initialization vector (IV) and ciphertext.
+
+Decrypt cipher text
+```sh
+vault write transit/decrypt/orders \
+    ciphertext="vault:v1:cZNHVx+sxdMErXRSuDa1q/pz49fXTn1PScKfhf+PIZPvy8xKfkytpwKcbC0fF2U="
+```
+The resulting data is base64-encoded and must be decoded to reveal the plaintext.
+
+Example:
+![root token](./vault/13.png)
+
+
+```sh
+base64 --decode <<< "NDExMSAxMTExIDExMTEgMTExMQo="
+```
+### Rotate the encryption key
+```sh
+vault write -f transit/keys/orders/rotate
+``` 
+
+---
+### Vault Agent
+
+![root token](./vault/12.png)
+For some Vault deployments, making (and maintaining) these changes to applications may not be a problem, and may actually be preferred. This may be applied to scenarios where you have a small number of applications or you want to keep strict, customized control over how each application interacts with Vault. However, in other situations where you have a large number of applications, as in large enterprises, you may not have the resources or expertise to update and maintain the Vault integration code for every application. When third party applications are being deployed by the application, it is prohibited to add the Vault integration code.
+
+Vault Agent aims to remove this initial hurdle to adopt Vault by providing a more scalable and simpler way for applications to integrate with Vault.
+
+### Code to create a database in postgresql
+```yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: postgres
+      app: postgres
+  template:
+    metadata:
+      labels:
+        service: postgres
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: hashicorpdemoapp/postgres:11.6
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: wizard
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: password
+          volumeMounts:
+            - mountPath: "/var/lib/postgresql/data"
+              name: "pgdata"
+      volumes:
+        - name: pgdata
+          emptyDir: {}
+```
+
+### Web policy 
+```sh
+path "database/creds/db-app" {
+  capabilities = ["read"]
+}
+path "totp/keys/my-user"{
+  capabilities = ["create", "read", "update", "delete","patch", "list"]
+}
+```
+### Code to get a web deployment with database credentials, and TOTP verification.
+```yaml
+---
+# Source: vault/templates/server-serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: web
+  namespace: default
+  labels:
+    app.kubernetes.io/name: web
+    app.kubernetes.io/instance: web
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deployment
+  labels:
+    app: web
+spec:
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/agent-inject-secret-db-creds: database/creds/db-app
+        vault.hashicorp.com/agent-inject-serect-totp: totp/keys/my-user
+        #vault.hashicorp.com/agent-inject-secret-transform: transform/decode/mobile-pay
+        vault.hashicorp.com/agent-inject-template-db-creds: |
+           <html>
+           <body>
+           <h1>Some secrets:</h1>
+           {{- with secret "database/creds/db-app" }}
+           <ul
+           <h1>Database creds path at database/creds/db-app</h1>
+           <li><pre>username: {{ .Data.username }}</pre></li>
+           <li><pre>password: {{ .Data.password }}</pre></li>
+           </ul>
+           {{- end }}
+           <h1>QR code generate by TOTP  path at totp/keys/my-user</h1>
+           {{- with secret "totp/keys/my-user" "generate=true" "issuer=Vault" "account_name=user@test.com" }}
+              <img src="data:image/png;base64, {{ .Data.barcode }}" alt="Red dot" />
+           </body>
+           </html>
+           {{- end }}
+         #  <h1>Decode a card</h1>
+          # {{- with secret "transform/decode/mobile-pay" "transformation=credit-card" "value=eRwUjS2L9dkhdhWQ4LC88BAtkQAh9HRCFEgVsigECdECh88sZjJsSLG3YMLnfvJX45Dv1tR2A" }}
+           #    {{ .Data.value }}"
+           #</body>
+           #</html>
+           #{{- end }}
+        vault.hashicorp.com/role: web
+    spec:
+      serviceAccountName: web
+      containers:
+        - image: nellie123her/nginx
+          name: nginx-container
+          ports:
+            - containerPort: 80
+```
+```sh
+kubectl exec -it $(kubectl get pods --selector "app=postgres" -o jsonpath="{.items[0].metadata.name}") -c postgres -- bash -c 'PGPASSWORD=gTUsL-WoC6jrpPN26qmK psql -U v-root-db-app-qnvUYVf8sm10AA86a8yJ-1657037958 -d wizard'
+```
+## Auth methods 
+### LDAP
+Auth methods must be configured in advance before users or machines can authenticate. These steps are usually completed by an operator or configuration management tool.
+
+```sh
+vault auth enable ldap
+```   
+
+
+
+
+```sh
+******
+vault delete sys/policies/egp/banned-words
+vault delete sys/policies/egp/bussiness-hours
+vault delete sys/policies/egp/max-kv-size
+vault delete sys/policies/egp/password-check
+vault delete sys/policies/egp/validate-delete-version
+*****
+POLICY=$(base64 policies/banned-words.sentinel)
+vault write sys/policies/egp/banned-words \
+        policy="${POLICY}" \
+        paths="kv/*" \
+        enforcement_level="hard-mandatory"
+vault read sys/policies/egp/banned-words
+---------
+POLICY=$(base64 policies/bussiness-hours.sentinel)
+vault write sys/policies/egp/bussiness-hours \
+        policy="${POLICY}" \
+        paths="kv/*" \
+        enforcement_level="hard-mandatory"
+---------
+POLICY=$(base64 policies/max-kv-size.sentinel)
+vault write sys/policies/egp/max-kv-size \
+        policy="${POLICY}" \
+        paths="kv/*" \
+        enforcement_level="soft-mandatory"
+---------
+POLICY=$(base64 policies/password-check.sentinel)
+vault write sys/policies/egp/password-check \
+        policy="${POLICY}" \
+        paths="/auth/userpass/users/*" \
+        enforcement_level="hard-mandatory"
+----------
+POLICY=$(base64 policies/validate-delete-version.sentinel)
+vault write sys/policies/egp/validate-delete-version \
+        policy="${POLICY}" \
+        paths="kv/metadata/*" \
+        enforcement_level="advisory"
+---------
+vault secrets enable -version=2 kv
+vault kv put kv/frontend pass=magia
+vault policy write kv-standard /policies/kv-standard.hcl
+vault write auth/userpass/users/otrowey \
+    password=PassWord\*123 \
+    policies=kv-standard
+vault login -method=userpass \
+    username=unwey \
+    password=unwey123
 ```

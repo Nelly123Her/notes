@@ -55,3 +55,8 @@ prompts for password if you omit --password which is recommended as it doesn't s
 docker tag my-image username/my-repo
 
 docker push username/my-repo
+
+
+docker exec -it postgres bash
+psql -U root
+select * from tokens;
