@@ -1,0 +1,29 @@
+# Policy that prohibits some words
+
+# Function that validates states
+validate_banned_words = func() {
+
+  banned_words = [ "negro", "mocos" ]
+
+# Make sure there is a data object
+  if "data" not in keys(request.data) {
+    print("No data object")
+    return true
+  }
+
+ for request.data.data as key, value {
+    print("KEY:", key)
+    print("VALUE:", value)
+    if key in banned_words {
+        return false
+    }
+  }
+  return true
+
+}
+
+# Main Rule
+validate_banned_words = validate_banned_words()
+main = rule {
+  validate_banned_words
+}
