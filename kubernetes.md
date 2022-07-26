@@ -1,4 +1,141 @@
 
+# Comandos de Docker
+
+Instalar Docker en MacOS: 
+**brew install docker-compose** 
+- Descargamos e instalamos docker en nuestro ordenador. 
+## Contenedores en Docker: 
+
+ 
+
+**docker create “N.I.”** 
+- Creamos el contenedor en docker. 
+
+**ocker start “N.I.”**  
+- Arrancamos el contenedor, pasa a “running”. 
+
+**docker start –a “N.I.”** 
+- Nos muestra el inicio del contenedor. 
+
+**docker run “N.I.”** 
+- Función entre el “create” y el “start”, crea e inicia el contenedor que pusimos. 
+
+**docker run –d “N.I.”** 
+- Crea y corre el contenedor en segundo plano. 
+
+**docker run “N.I” --name “N.C”** 
+- Le asigna un nombre específico al contenedor que creamos. 
+
+**docker ps** 
+- Muestra los contenedores que se encuentren activos (running). 
+
+**docker ps -a** 
+- Muestra todos los contenedores que corrieron y/o corren actualmente. 
+
+**docker stop “N.C.”** 
+- Envía una señal al contenedor de trabajo para que se detenga con un timing de 10s. 
+
+**docker kill “N.C.”** 
+- Envía una señal al contenedor para que se detenga de tajo. 
+
+**docker logs “N.C.”** 
+- Nos muestra todo lo que se impirme dentro de los contenedores. 
+
+**docker exec “N.C.” “comando”** 
+- Nos ayuda a introducir comandos dentro del contenedor 
+
+**docker exec –it “N.C.” “comando”** 
+- La bandera “-i" redirecciona la salida del comando a nuestra terminal, mientras que la “-t” le da un formato para poder trabajar. 
+
+**docker rm “N.C.”** 
+- Borra el contenedor (y solo el contenedor) que le escribamos. 
+
+**docker rm –f “N.C.”** 
+- Elimina el contenedor de forma forzada, esto por si el contenedor en cuestión está corriendo. 
+
+ 
+
+ 
+
+## Imagenes en Docker: 
+
+ 
+
+**docker images** 
+- No muestra las imágenes que tengamos en nuestro equipo 
+
+**docker pull “N.I.”:”Version”** 
+- Nos descarga las imágenes a nuestro equipo, estas pueden ser visualizadas previamente en el repo de docker: https://hub.docker.com/ 
+
+**docker image rm “N.I.”:”version”** 
+- Nos permite borrar la imagen. 
+
+**docker rmi -f “N.I.”** 
+- Nos ayuda a borrar de manera forzada la imagen. 
+
+**docker build** 
+- Se ejecuta en la carpeta con nuestros archivos “Dockerfile” y adicionales. 
+
+**docker build –tag “N.A./Version” “Path”** 
+- La bandera “--tag” No ayuda a asignarle un nombre/tag a nuestra imagen. 
+
+**docker tag “N.I.” “dockerusername/N.I:Version”**  
+- El comando tag, nos ayuda a la publicación de nuestra imagen, primero debemos haber creado una cuenta en el repo de docker. 
+
+**docker push “dockerusername/N.I.:Version”** 
+- Envía al repo de docker la imagen que preparamos para publicar. 
+
+## Volúmenes en Docker: 
+
+**docker run –v “path_absoluto” : ”Directorio de la data”** 
+- Creamos el Mounted Volume, después de haber creado un directorio para almacenar la info del contenedor, y revisar donde se almacena la data de nuestra imagen en el repo de docker. 
+
+**docker volume create “N.V.”** 
+- Crear el Named Volume en docker. 
+
+**docker run –v “N.V.”: “Directorio de la data” --name “N.C.” “N.I.”** 
+- Asignar el directorio ya creado al contenedor. 
+
+**docker rm –fv “N.C.”** 
+- Elimina el contenedor, y la bandera “-v” elimina también los Anonymous Volumes relacionados al contenedor. 
+
+**docker volume ls** 
+- Nos mostrará información acerca de los volúmenes que tenemos en docker pero solo de los Named y Anonymous, los Mounted NO serán mostrados ya que esos no los administra docker. 
+
+**docker container inspect “N.C.”** 
+- Nos mostrará información acerca del contenedor en cuestión, tales como: variables de entorno, redes, volúmenes relacionados, etc. 
+
+**docker volume rm “N.V.”** 
+- Nos elimina el volumen. 
+
+ 
+
+## Redes en Docker 
+
+ 
+
+**docker network ls** 
+- Nos muestra todas las networks que tenemos en docker. 
+
+**docker network create “N.R.”** 
+- Creamos una red en docker con el driver bridge. 
+
+**docker network connect “N.R” “N.C”** 
+- Conectamos un contenedor a la network que especifiquemos. 
+
+**docker network disconnect “N.R” “N.C”** 
+- Desconectamos un contenedor a la red que especifiquemos. 
+
+**docker network rm “N.N”** 
+- Eliminamos una red. 
+
+**docker network prune** 
+- Eliminamos todas las redes que no estén siendo usadas en contenedores que tengamos. 
+
+ 
+
+ 
+
 ### Create a namespace 
 ```sh
 kubectl create ns (Name of namespace)
