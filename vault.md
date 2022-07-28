@@ -189,13 +189,15 @@ $ vault auth disable approle
 $ vault auth list
 ```
 
-#### Enable an Auth Method at the Default Path
+#### Enable an Auth Method at the default Path
 
 ```sh
 $ vault auth enable approle
 Success! Enabled approle auth method at: approle/
 Enable an Auth Method using a Custom Path
 ```
+#### Enable an Auth Method at the custom Path
+
 ```sh
 $ vault auth enable –path=vault-custom approle
 Success! Enabled approle auth method at: vault-course/
@@ -694,77 +696,189 @@ destroyed          false
 version            3
 ```
 ### Kv version 2
+```sh
+Subcommands:
+    delete               Deletes versions in the KV store
+    destroy              Permanently removes one or more versions in the KV store
+    enable-versioning    Turns on versioning for a KV store
+    get                  Retrieves data from the KV store
+    list                 List data or secrets
+    metadata             Interact with Vault's Key-Value storage
+    patch                Sets or updates data in the KV store without overwriting
+    put                  Sets or updates data in the KV store
+    rollback             Rolls back to a previous version of data
+    undelete             Undeletes versions in the KV store
+```
+
 ![root token](./vault/10.png)
 
 ```sh
 $ vault secrets enable -version=2 kv
 Success! Enabled the kv secrets engine at: kv/
 ``` 
-```sh
-vault token lookup
-Key                 Value
----                 -----
-accessor            RX2zPaTGpNpZrBKI0AShVLcx
-creation_time       1656614883
-creation_ttl        0s
-display_name        root
-entity_id           n/a
-expire_time         <nil>
-explicit_max_ttl    0s
-id                  hvs.BmI578JCJgzsJPBT4bIC3oAt
-meta                <nil>
-num_uses            0
-orphan              true
-path                auth/token/root
-policies            [root]
-ttl                 0s
-type                service
-```
 
-```sh
-vault secrets enable kv  
-Success! Enabled the kv secrets engine at: kv/
-```
+#### Writing data on a certain path 
+Writes the data to the given path in the key-value store. The data can be of any type.
 
+      $ vault kv put -mount=secret foo bar=baz
+
+  The deprecated path-like syntax can also be used, but this should be avoided 
+  for KV v2, as the fact that it is not actually the full API path to 
+  the secret (secret/data/foo) can cause confusion: 
+  
+      $ vault kv put secret/foo bar=baz
+
+For example: 
+Note: by the way all are equivalent
 ```sh
-vault kv put kv/app/db pass=123 user=admin api=a8ee4b50cce124
-Success! Data written to: kv/app/db
-```
-```sh
-vault kv put kv/app/db api=39cms1204mfi2m 
+vault kv put -mount=secret foo bar=baz 
 = Secret Path =
-kv/data/app/db
+secret/data/foo
 
 ======= Metadata =======
 Key                Value
 ---                -----
-created_time       2022-06-30T19:09:30.433709Z
+created_time       2022-07-28T01:25:39.252648791Z
+custom_metadata    <nil>
+deletion_time      n/a
+destroyed          false
+version            1
+
+---
+vault kv put secret/foo bar=baz 
+= Secret Path =
+secret/data/foo
+
+======= Metadata =======
+Key                Value
+---                -----
+created_time       2022-07-28T01:26:01.481917119Z
 custom_metadata    <nil>
 deletion_time      n/a
 destroyed          false
 version            2
 ```
+**Getting data from a certain path**
+  Retrieves the value from Vault's key-value store at the given key name. If no
+  key exists with that name, an error is returned. If a key exists with that
+  name but has no data, nothing is returned.
+
+      $ vault kv get -mount=secret foo
+
+  The deprecated path-like syntax can also be used, but this should be avoided 
+  for KV v2, as the fact that it is not actually the full API path to 
+  the secret (secret/data/foo) can cause confusion: 
+  
+      $ vault kv get secret/foo
+Note: Both are equivalent ways to retrieve data from a certain path.
 ```sh
-vault kv get kv/app/db 
+vault kv get -mount=secret foo   
 = Secret Path =
-kv/data/app/db
+secret/data/foo
 
 ======= Metadata =======
 Key                Value
 ---                -----
-created_time       2022-06-30T19:12:33.421798Z
+created_time       2022-07-28T01:26:01.481917119Z
 custom_metadata    <nil>
 deletion_time      n/a
 destroyed          false
-version            3
+version            2
 
-==== Data ====
-Key     Value
----     -----
-api     a8ee4b50cce124
-pass    123
-user    admin
+=== Data ===
+Key    Value
+---    -----
+bar    baz
+
+vault kv get secret/foo                    
+= Secret Path =
+secret/data/foo
+
+======= Metadata =======
+Key                Value
+---                -----
+created_time       2022-07-28T01:26:01.481917119Z
+custom_metadata    <nil>
+deletion_time      n/a
+destroyed          false
+version            2
+
+=== Data ===
+Key    Value
+---    -----
+bar    baz
+
 ```
+**Listing information in a certain path**
+Lists data from Vault's key-value store at the given path.
+
+  List values under the "my-app" folder of the key-value store:
+
+      $ vault kv list secret/my-app/
+
+```sh
+vault kv list secret/  
+Keys
+----
+foo
+new-secret
+second-secret
+third-secret
+```
+**Deleting secrets at a certain path**
+Deletes the data for the provided version and path in the key-value store. The versioned data will not be fully removed, but marked as deleted and will no longer be returned in normal get requests.
+
+  To delete the latest version of the key "foo": 
+
+      $ vault kv delete -mount=secret foo
+
+  The deprecated path-like syntax can also be used, but this should be avoided  for KV v2, as the fact that it is not actually the full API path to 
+  the secret (secret/data/foo) can cause confusion: 
+  
+      $ vault kv delete secret/foo
+
+  To delete version 3 of key foo:
+
+      $ vault kv delete -mount=secret -versions=3 foo
+
+  To delete all versions and metadata, see the "vault kv metadata" subcommand.
+
+For example: we delete the information that is stored to secret/foo path, as we can see below both are equivalent
+```sh
+$ vault kv delete  secret/foo   
+Success! Data deleted (if it existed) at: secret/data/foo
+
+$ vault kv delete -mount=secret foo 
+Success! Data deleted (if it existed) at: secret/data/foo
+```
+We can inspect in the UI to be sure if does not exist , as we can see both version 1 and 2 are deleted. But this delete its just a soft delete, we can un-delete what we have done. 
+![root token](./vault/15.png)
+
+**Undelete**
+
+Undeletes the data for the provided version and path in the key-value store.
+  This restores the data, allowing it to be returned on get requests.
+
+  To undelete version 3 of key "foo":
+  
+      $ vault kv undelete -mount=secret -versions=3 foo
+
+  The deprecated path-like syntax can also be used, but this should be avoided, 
+  as the fact that it is not actually the full API path to 
+  the secret (secret/data/foo) can cause confusion: 
+
+      $ vault kv undelete -versions=3 secret/foo
+In this case we have already delete all the information and we assure this info going to UI and verified both versions are deleted.
+![root token](./vault/16.png)
+For example:
+```sh
+vault kv undelete -mount=secret -versions=2 foo
+Success! Data written to: secret/undelete/foo
+```
+And we get only the second version 
+![root token](./vault/17.png)
+
+
 ```sh
 vault kv rollback -version=1 kv/app/db 
 Key                Value
@@ -1087,6 +1201,9 @@ vault auth enable ldap
 
 
 
+### Sentinel policies
+
+#### Delete if exist
 ```sh
 ******
 vault delete sys/policies/egp/banned-words
@@ -1095,6 +1212,10 @@ vault delete sys/policies/egp/max-kv-size
 vault delete sys/policies/egp/password-check
 vault delete sys/policies/egp/validate-delete-version
 *****
+```
+### Apply sentinel policies
+```sh
+
 POLICY=$(base64 policies/banned-words.sentinel)
 vault write sys/policies/egp/banned-words \
         policy="${POLICY}" \
@@ -1126,13 +1247,168 @@ vault write sys/policies/egp/validate-delete-version \
         paths="kv/metadata/*" \
         enforcement_level="advisory"
 ---------
-vault secrets enable -version=2 kv
-vault kv put kv/frontend pass=magia
-vault policy write kv-standard /policies/kv-standard.hcl
-vault write auth/userpass/users/otrowey \
-    password=PassWord\*123 \
-    policies=kv-standard
-vault login -method=userpass \
-    username=unwey \
-    password=unwey123
 ```
+#### Testing sentinel policies
+
+```sh
+#Enabling kv version2
+vault secrets enable -version=2 kv
+
+#Creating new data
+vault kv put kv/frontend pass=magia
+
+#Creating a policy to permit a user or client create information at that path for example: secrets/foo
+vault policy write kv-standard /policies/kv-standard.hcl
+#Creating a new user to test our policies
+vault write auth/userpass/users/nelly \
+    password=123 \
+    policies=kv-standard
+#login with new user or client 
+vault login -method=userpass \
+    username=nelly \
+    password=123
+```
+
+
+---
+### Policies
+We create a policy called test with this information
+```sh
+path "kv/*" {
+  capabilities = ["create","delete","list"]
+}
+
+path "secret/*"{
+   capabilities = ["read","list","update"]
+}
+```
+Basically this policy allows a user to create new data on kv path and update existing data at secret/ path 
+
+
+with token root we anable kv v2 
+```sh
+vault secrets enable -path=secret -version=2 kv
+```
+and create some data just as below.
+```sh
+vault kv put secret/second-secret user=admin01
+====== Secret Path ======
+secret/data/second-secret
+
+======= Metadata =======
+Key                Value
+---                -----
+created_time       2022-07-27T20:49:14.755457672Z
+custom_metadata    <nil>
+deletion_time      n/a
+destroyed          false
+version            1
+```
+
+finally we create a user  to test our ACL policies
+```sh
+
+#Creating a policy to permit a user or client create information at that path for example: secrets/foo
+vault policy write kv-standard /policies/kv-standard.hcl
+#Creating a new user to test our policies
+vault write auth/userpass/users/nelly \
+    password=123 \
+    policies=kv-standard
+```
+we log into
+```sh
+#login with new user or client 
+vault login -method=userpass \
+    username=nelly \
+    password=123
+```
+
+we can create a new version based on an existing path
+```sh
+vault kv put secret/second-secret user=admin04  
+====== Secret Path ======
+secret/data/second-secret
+
+======= Metadata =======
+Key                Value
+---                -----
+created_time       2022-07-28T00:48:20.375386006Z
+custom_metadata    <nil>
+deletion_time      n/a
+destroyed          false
+version            4
+```
+PUT command it's like an update, meanwhile it create a "path" for example:
+
+```sh
+ vault kv put secret/new-secret user=nelly password=mozart123                                                                 ✔ 
+Error writing data to secret/data/new-secret: Error making API request.
+
+URL: PUT http://0.0.0.0:8200/v1/secret/data/new-secret
+Code: 403. Errors:
+
+* 1 error occurred:
+	* permission denied
+```
+So we cannot create a new info cuz our policies is not allowed.
+
+if we update our police just as below. we added create capability 
+```sh
+path "secret/*"{
+   capabilities = ["read","list","update","create"]
+}
+```
+
+Execute the same command, so we will see we can create this new data
+```sh
+vault kv put secret/new-secret user=nelly password=mozart123
+===== Secret Path =====
+secret/data/new-secret
+
+======= Metadata =======
+Key                Value
+---                -----
+created_time       2022-07-28T01:08:04.701374877Z
+custom_metadata    <nil>
+deletion_time      n/a
+destroyed          false
+version            1
+```
+
+GET it's the equivalent to read for example, we want to read what contains this path secret/new-secret
+we execute this command **kv get**
+```sh
+vault kv get secret/new-secret  
+===== Secret Path =====
+secret/data/new-secret
+
+======= Metadata =======
+Key                Value
+---                -----
+created_time       2022-07-28T01:08:04.701374877Z
+custom_metadata    <nil>
+deletion_time      n/a
+destroyed          false
+version            1
+
+====== Data ======
+Key         Value
+---         -----
+password    mozart123
+user        nelly
+```
+
+If we want to list what contains certain path we use **kv list** in this case just as secret because in this are mounted our secrets we already put it on
+
+```sh
+vault kv list  secret/   
+Keys
+----
+new-secret
+second-secret
+third-secret
+```
+**Delete secrets**
+
+
+**kv delete**

@@ -2,12 +2,12 @@
 ```sh
 docker rm -vf $(docker ps -aq)                                                                                            
 ```
-### Docker deleting container 
+### Docker deleting all images  
 ```sh
 docker rmi -f $(docker images -aq)                                                                                   
 ```
 ---
-Run  a postgresql database  with pgadmin
+## Run  a postgresql database  with pgadmin
 ```sh
 version: "3.1"
 
@@ -51,12 +51,14 @@ volumes:
 docker login --username username
 ```
 ```sh
-prompts for password if you omit --password which is recommended as it doesn't store it in your command history
 docker tag my-image username/my-repo
 
 docker push username/my-repo
+```
 
-
+### Get into a container in docker
+```sh
 docker exec -it postgres bash
 psql -U root
 select * from tokens;
+```
