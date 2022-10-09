@@ -1,3 +1,17 @@
+### Operator init
+The operator init command initializes a Vault server. Initialization is the process by which Vault's storage backend is prepared to receive data. Since Vault servers share the same storage backend in HA mode, you only need to initialize one Vault to initialize the storage backend. This command cannot be run against already-initialized Vault cluster.
+
+**-key-shares (int: 5)** - Number of key shares to split the generated master key into. This is the number of "unseal keys" to generate. This is aliased as -n.
+
+**-key-threshold (int: 3)** - Number of key shares required to reconstruct the root key. This must be less than or equal to -key-shares. This is aliased as -t.
+
+**-pgp-keys (string: "...")** - Comma-separated list of paths to files on disk containing public PGP keys OR a comma-separated list of Keybase usernames using the format keybase:<username>. When supplied, the generated unseal keys will be encrypted and base64-encoded in the order specified in this list. The number of entries must match -key-shares, unless -stored-shares are used.
+#### »HSM and KMS Options
+**-recovery-pgp-keys (string: "...")** - Behaves like **-pgp-keys**, but for the recovery key shares. This is only used with Auto Unseal seals (HSM, KMS and Transit seals).
+
+**-recovery-shares (int: 5)** - Number of key shares to split the recovery key into. This is only used Auto Unseal seals (HSM, KMS and Transit seals).
+
+**-recovery-threshold (int: 3)** - Number of key shares required to reconstruct the recovery key. This is only used Auto Unseal seals (HSM, KMS and Transit seals).
 ### Configuration File
 1. Vault servers are configured using a file
 1. Written in HCL or JSON
@@ -1042,8 +1056,6 @@ The resulting data is base64-encoded and must be decoded to reveal the plaintext
 
 Example:
 ![root token](./vault/13.png)
-
-
 ```sh
 base64 --decode <<< "NDExMSAxMTExIDExMTEgMTExMQo="
 ```
@@ -1051,6 +1063,42 @@ base64 --decode <<< "NDExMSAxMTExIDExMTEgMTExMQo="
 ```sh
 vault write -f transit/keys/orders/rotate
 ``` 
+### RabbitMQ
+We run a container in docker 
+```sh
+docker run --rm --name some-rabbit -p 15672:15672 \       
+    -e RABBITMQ_DEFAULT_USER=learn_vault \
+    -e RABBITMQ_DEFAULT_PASS=hashicorp \
+    rabbitmq:3-management
+```
+
+```sh
+vault secrets enable rabbitmq             
+```
+```sh
+export RABBITMQ_URL=http://127.0.0.1:15672
+```
+```sh
+vault write rabbitmq/config/connection \                                                                                   2 ✘ 
+    connection_uri="http://localhost:15672" \
+    username="learn_vault" \
+    password="hashicorp"
+```
+```sh
+vault write rabbitmq/roles/my-role \                                                                                         ✔ 
+    vhosts='{"/":{"write": ".*", "read": ".*"}}'
+```
+```sh
+vault read rabbitmq/creds/my-role                                                                                        127 ✘ 
+Key                Value
+---                -----
+lease_id           rabbitmq/creds/my-role/9NPnQuvOEU9qJkn6HWlkNPsJ
+lease_duration     768h
+lease_renewable    true
+password           9s6DNihshKWS5ShSk679kedDgbNFiW2TngV1
+username           root-ad511cff-1375-ea33-f081-20c8213af914
+```
+
 
 ---
 ### Vault Agent
@@ -1272,6 +1320,50 @@ vault login -method=userpass \
 
 ---
 ### Policies
+```sh
+# This section grants all access on "secret/*". Further restrictions can be
+# applied to this broad policy, as shown below.
+path "secret/*" {
+  capabilities = ["create", "read", "update", "patch", "delete", "list"]
+}
+
+# Even though we allowed secret/*, this line explicitly denies
+# secret/super-secret. This takes precedence.
+path "secret/super-secret" {
+  capabilities = ["deny"]
+}
+
+# Policies can also specify allowed, disallowed, and required parameters. Here
+# the key "secret/restricted" can only contain "foo" (any value) and "bar" (one
+# of "zip" or "zap").
+path "secret/restricted" {
+  capabilities = ["create"]
+  allowed_parameters = {
+    "foo" = []
+    "bar" = ["zip", "zap"]
+  }
+}
+```
+```sh
+# This allows the user to update the userpass auth method's user
+# configurations (e.g., "password") but cannot update the "token_policies"
+# parameter value.
+path "auth/userpass/users/*" {
+  capabilities = ["update"]
+  denied_parameters = {
+    "token_policies" = []
+  }
+}
+```
+**Creating Policies**
+```sh
+vault policy write policy-name policy-file.hcl
+```
+**Creating tokens with policies**
+```sh
+vault token create -policy=dev-readonly -policy=logs
+```
+
 We create a policy called test with this information
 ```sh
 path "kv/*" {
@@ -1412,3 +1504,56 @@ third-secret
 
 
 **kv delete**
+
+
+
+### Replication performance
+Vault supports two different types of replication, performance and disaster recovery (DR). Performance clusters create and maintain their own tokens. These tokens are NOT replicated to other clusters. DR clusters are essentially a warm-standby and do replicate tokens from the primary cluster.
+
+
+### Disaster Recovery vs Performance Replication
+|  Capability | Disaster recovery  |  Performance Replication |
+|-------------|--------------------|--------------------------|
+|  Mirrors the configuration of a primary cluster	 |   |   |
+|  Mirrors the configuration of a primary cluster’s backends (i.e., auth methods, secrets engines, audit devices, etc.)	 |   |   |
+|  Mirrors the tokens and leases for applications and users interacting with the primary cluster	 |   |   |
+---
+### Leases 
+#### What is a lease?
+Answer: With every dynamic secret and service type authentication token, Vault creates a lease: metadata containing information such as a time duration, renewability, and more. 
+Revocation can happen manually via the API, via the vault lease revoke cli command, the user interface (UI) under the Access tab, or automatically by Vault.
+When a lease is expired, Vault will automatically revoke that lease. When a token is revoked, Vault will revoke all leases that were created using that token.
+
+When reading a dynamic secret, such as via vault read, Vault always returns a lease_id. This is the ID used with commands such as vault lease renew and vault lease revoke to manage the lease of the secret.
+
+Usage
+The following flags are available in addition to the standard set of flags included on all commands.
+
+-force (bool: false) - Delete the lease from Vault even if the secret engine revocation fails. This is meant for recovery situations where the secret in the target secrets engine was manually removed. If this flag is specified, -prefix is also required. This is aliased as "-f". The default is false.
+
+-prefix (bool: false) - Treat the ID as a prefix instead of an exact lease ID. This can revoke multiple leases simultaneously. The default is false.
+
+-sync (bool: false) - Make the operation synchronous instead of queuing the revocations to be done in the background.
+
+
+
+ Revokes secrets by their lease ID. This command can revoke a single secret
+  or multiple secrets based on a path-matched prefix.
+
+  The default behavior when not using -force is to revoke asynchronously; Vault
+  will queue the revocation and keep trying if it fails (including across
+  restarts). The -sync flag can be used to force a synchronous operation, but
+  it is then up to the caller to retry on failure. Force mode always operates
+  synchronously.
+
+  Revoke a single lease:
+
+      $ vault lease revoke database/creds/readonly/2f6a614c...
+
+  Revoke all leases for a role:
+
+      $ vault lease revoke -prefix aws/creds/deploy
+
+  Force delete leases from Vault even if secret engine revocation fails:
+
+      $ vault lease revoke -force -prefix consul/creds

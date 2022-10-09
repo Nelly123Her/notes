@@ -1,6 +1,6 @@
 ### Create  VM Azure
 ```sh
- az vm create \                                                                                          Pay-As-You-Go 
+ az vm create \  
     --resource-group nelly-hernandez \
     --name vm-vault \
     --image UbuntuLTS \
